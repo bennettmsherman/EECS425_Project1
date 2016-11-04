@@ -13,18 +13,13 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Hashtable;
 
-import static bms113.eecs325.cwru.edu.Constants.*;
+import static bms113.eecs325.cwru.edu.ServerClientCommon.*;
 
 public class ChatServer {
 	
 	///////////////////
 	// CLASS MEMBERS //
-	///////////////////
-	
-	/**
-	 *  I'm in the 325N section and my roster number is 2 (so 46 + 2 + 5000)
-	 */
-	private static final int SERVER_PORT = 5048;
+	///////////////////c
 	
 	/**
 	 * Links names to chat participants.
@@ -79,28 +74,6 @@ public class ChatServer {
 		}
 	}
 	
-	
-	/**
-	 * Create a DataOutputStream in the direction Server->Client
-	 * @param connectionSocket The connection socket that's connected to the client
-	 * @return A DataOutputStream that the server can write to in order to send msgs to the client.
-	 */
-	private DataOutputStream getOutToClientStream(Socket connectionSocket)
-	{
-		DataOutputStream outStream = null;
-		try
-		{
-			outStream = new DataOutputStream(connectionSocket.getOutputStream());
-		}
-		catch (IOException err)
-		{
-			System.err.println("Unable to create a DataOutputStream for port: " + SERVER_PORT + ". Server terminating");
-			System.err.println("Error was" + err.getMessage());
-			System.exit(-1);
-		} 
-		return outStream;
-	}
-	
 	/**
 	 * Initializes the ServerSocket member
 	 * @param portNum The port to interface with a TCP socket
@@ -117,26 +90,6 @@ public class ChatServer {
 			System.err.println("Error was" + err.getMessage());
 			System.exit(-1);
 		} 
-	}
-	
-	/**
-	 * @param connectionSocket A connection socket that links the server and client.
-	 * @return Get a reader which the server can use to read data from the client.
-	 */
-	private BufferedReader getReaderForClientToServer(Socket connectionSocket)
-	{
-		BufferedReader buffRdr = null;
-		try
-		{
-			buffRdr = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-		}
-		catch (IOException err)
-		{
-			System.err.println("Unable to create a BufferedReader for the connection socket on " + SERVER_PORT + ". Server terminating");
-			System.err.println("Error was" + err.getMessage());
-			System.exit(-1);
-		}
-		return buffRdr;
 	}
 	
 	/**
@@ -158,26 +111,6 @@ public class ChatServer {
 		}
 		return connectionSocket;
 	}
-	
-	/**
-	 * Close the socket specified by the parameter
-	 * @param toClose The socket to close
-	 */
-	private void closeSocket(Socket toClose)
-	{
-		assert !toClose.isClosed();
-		try
-		{
-			toClose.close();
-		}
-		catch (IOException err)
-		{
-			System.err.println("Error closing socket.");
-			System.err.println("Error was" + err.getMessage());
-			System.exit(-1);
-		}
-	}
-	
 	
 	///////////////////
 	//  INNER CLASS  //
@@ -209,8 +142,8 @@ public class ChatServer {
 		 */
 		void initializeStreamAndReader()
 		{
-			inFromClient = getReaderForClientToServer(client.getSocket());
-			outToClient =  getOutToClientStream(client.getSocket());
+			inFromClient = getSocketBufferedReader(client.getSocket());
+			outToClient =  getSocketDataOutputStream(client.getSocket());
 		}
 		
 		public void run()
@@ -230,7 +163,7 @@ public class ChatServer {
 			boolean shouldContinue = true;
 			while(shouldContinue)
 			{
-				String newMessage = readFromClient();
+				String newMessage = readFromSocket(inFromClient);
 				System.out.println(client.getSocket().getRemoteSocketAddress().toString().substring(1) + ": " + newMessage);
 				
 				if (newMessage == null)
@@ -454,47 +387,6 @@ public class ChatServer {
 		void sendMessageToPeer(String msgToSend)
 		{
 			sendMessageToDataOutputStream(msgToSend, participantToThread.get(client.getPeer()).outToClient);
-		}
-		
-		/**
-		 * Send a message to the DataOutputStream parameter.
-		 * This is how inter-client communication works. Client A messages the server
-		 * intending to message client B, and the server drops a message into Client B's DataOutputStream.
-		 * @param msgToSend The message to send
-		 * @param stream The stream to write into.
-		 */
-		void sendMessageToDataOutputStream(String msgToSend, DataOutputStream stream)
-		{
-			try
-			{
-				// Append a newline to each of the sent messages
-				stream.writeBytes(msgToSend + "\n");
-				stream.flush();
-			} 
-			catch (IOException err) {
-				System.err.println("Server encountered an error writing to the client " + client.getName() + "Error was:");
-				err.printStackTrace();
-				Thread.currentThread().stop();
-			}
-		}
-		
-		/**
-		 * Read data from the inFromClient BufferedReader. This is a blocking call.
-		 * @return
-		 */
-		String readFromClient()
-		{
-			String readMsg = "";
-			try
-			{
-				readMsg = inFromClient.readLine();
-			}
-			catch (IOException err) {
-				System.err.println("Server encountered an error reading from the client " + client.getName() + "Error was:");
-				err.printStackTrace();
-				Thread.currentThread().stop();
-			}
-			return readMsg;
 		}
 	}
 	
