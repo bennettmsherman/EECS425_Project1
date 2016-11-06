@@ -56,7 +56,7 @@ public class ChatServer {
 	 * Also makes sure that multiple threads can't change aspects of ChatParticipants
 	 * at once. It's reentrant to prevent *oops, deadlock* issues.
 	 */
-	private ReentrantLock serverTablesLock = new ReentrantLock();
+	private ReentrantLock criticalServerDataLock = new ReentrantLock();
 	
 	/////////////////////
 	// CLASS FUNCTIONS //
@@ -116,7 +116,7 @@ public class ChatServer {
 	 */
 	private void assignClientDefaultName(ChatParticipant client)
 	{
-		serverTablesLock.lock();
+		criticalServerDataLock.lock();
 		try
 		{
 			int nameNumber = nameToParticipant.size();
@@ -138,7 +138,7 @@ public class ChatServer {
 		}
 		finally
 		{
-			serverTablesLock.unlock();
+			criticalServerDataLock.unlock();
 		}
 	}
 	
@@ -269,7 +269,7 @@ public class ChatServer {
 			System.out.println("SVR LOG: New client thread started with IP Address:Port=" + clientIpAndSocket);
 			
 			// Lock table access
-			serverTablesLock.lock();
+			criticalServerDataLock.lock();
 			try
 			{
 				// Add this client and thread to the participantToThread Hashtable
@@ -277,7 +277,7 @@ public class ChatServer {
 			}
 			finally
 			{
-				serverTablesLock.unlock();
+				criticalServerDataLock.unlock();
 			}
 			
 			// Initialize inFromClient and outToClient
@@ -331,7 +331,7 @@ public class ChatServer {
 				terminateConnectionBetweenThisClientAndItsPeer();
 			}
 			
-			serverTablesLock.lock();
+			criticalServerDataLock.lock();
 			try
 			{
 				// At this point, the server is disconnecting from the client.
@@ -343,7 +343,7 @@ public class ChatServer {
 			}
 			finally
 			{
-				serverTablesLock.unlock();
+				criticalServerDataLock.unlock();
 			}
 			
 			// Close the socket that connects the server and client
@@ -503,7 +503,7 @@ public class ChatServer {
 		 */
 		private void getMyPeersNameControlMsgHandler()
 		{
-			serverTablesLock.lock();
+			criticalServerDataLock.lock();
 			try
 			{
 				if (client.isInListenMode())
@@ -517,7 +517,7 @@ public class ChatServer {
 			}
 			finally
 			{
-				serverTablesLock.unlock();
+				criticalServerDataLock.unlock();
 			}
 		}
 		
@@ -550,7 +550,7 @@ public class ChatServer {
 		{
 			// Synchronize this entire thread to prevent issues with multiple threads
 			// trying to connect to the same client.
-			serverTablesLock.lock();
+			criticalServerDataLock.lock();
 			try
 			{
 				// Parse the control message for the new peer's name. The name is every character following the "=" sign in the control message
@@ -624,7 +624,7 @@ public class ChatServer {
 			}
 			finally
 			{
-				serverTablesLock.unlock();
+				criticalServerDataLock.unlock();
 			}
 		}
 		
@@ -634,7 +634,7 @@ public class ChatServer {
 		 */
 		void connectToOtherClient(ChatParticipant newPeer)
 		{
-			serverTablesLock.lock();
+			criticalServerDataLock.lock();
 			try
 			{
 				// Update this client's references to the new peer
@@ -651,7 +651,7 @@ public class ChatServer {
 			}
 			finally
 			{
-				serverTablesLock.unlock();
+				criticalServerDataLock.unlock();
 			}
 		}
 		
@@ -661,7 +661,7 @@ public class ChatServer {
 		 */
 		void terminateConnectionBetweenThisClientAndItsPeer()
 		{
-			serverTablesLock.lock();
+			criticalServerDataLock.lock();
 			try
 			{
 				// Alert the client's peer of the termination
@@ -679,7 +679,7 @@ public class ChatServer {
 			}
 			finally
 			{
-				serverTablesLock.unlock();
+				criticalServerDataLock.unlock();
 			}
 		}
 		
@@ -708,7 +708,7 @@ public class ChatServer {
 				return;
 			}
 			
-			serverTablesLock.lock();
+			criticalServerDataLock.lock();
 			try
 			{
 				// If the desired name isn't currently reserved, then allow the client to reserve it.
@@ -735,7 +735,7 @@ public class ChatServer {
 			}
 			finally
 			{
-				serverTablesLock.unlock();
+				criticalServerDataLock.unlock();
 			}
 		}
 		

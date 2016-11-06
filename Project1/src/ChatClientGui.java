@@ -109,6 +109,10 @@ public class ChatClientGui {
 	 */
 	private PrintWriter msgsFromGuiToClientWriter;
 	
+	////////////////////
+	// FUNCTIONS	 //
+	///////////////////
+	
 	/**
 	 * Launch the application.
 	 * @param args Command line arguments
@@ -360,6 +364,9 @@ public class ChatClientGui {
 		JOptionPane.showMessageDialog(null, errMsg, "ERROR!", JOptionPane.ERROR_MESSAGE);
 	}
 	
+	////////////////////////////
+	// GUI ACTION HANDLERS	 //
+	///////////////////////////
 	/**
 	 * Handles action events for when the "Send" button is pressed
 	 */
