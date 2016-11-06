@@ -98,7 +98,7 @@ abstract class ServerClientCommon {
 	/**
 	 * Names that a client isn't allowed to take
 	 */
-	static final String[] RESERVED_NAMES = {LISTENER_SPECIFIER, "SVR", "SVR LOG", CONTROL_MESSAGE_SPECIFIER, "You", "LISTENER_MODE_ECHO"};
+	static final String[] RESERVED_NAMES = {LISTENER_SPECIFIER, "SVR", "SVR LOG", CONTROL_MESSAGE_SPECIFIER, "You", "LISTENER_MODE_ECHO", "GUI"};
 
 	
 	///////////////////

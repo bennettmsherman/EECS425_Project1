@@ -381,9 +381,13 @@ public class ChatClientGui {
 			newMessageArea.setText("");
 			// Write the message to the stream read by the client application. This is what results
 			// in the message being sent to the server.
-			if (msgsFromGuiToClientWriter != null)
+			if (msgsFromGuiToClientWriter != null && chatClientThread != null && chatClientThread.isAlive())
 			{
 				msgsFromGuiToClientWriter.println(newMessage);	
+			}
+			else if (chatClientThread == null || !chatClientThread.isAlive())
+			{
+				displayTextInHistoryWindow("GUI: You're not connected to a server!");
 			}
 		}
 	}
@@ -568,7 +572,10 @@ public class ChatClientGui {
 				// Set the hostname and port and show them in the message window.
 				serverHostname = hostField.getText();
 				serverPortNum = Integer.parseInt(portNumField.getText());
-				displayTextInHistoryWindow("Entered hostname, port: " + serverHostname + ":" + serverPortNum);
+				if (chatClientThread == null || !chatClientThread.isAlive())
+				{
+					displayTextInHistoryWindow("Connecting to hostname, port: " + serverHostname + ":" + serverPortNum);
+				}
 			}
 			// Create the new ChatClient thread
 			createClient();

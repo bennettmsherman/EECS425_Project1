@@ -316,7 +316,7 @@ public class ChatServer {
 				// to another client), pass the message to the other client.
 				else if (!client.isInListenMode())
 				{
-					passMessageFromClientToPeer(newMessage, false);						
+					sendMessageToThisClientsPeer(newMessage, false);						
 				}
 				else
 				{
@@ -358,37 +358,37 @@ public class ChatServer {
 		/**
 		 * Forwards a message from this client to its peer
 		 * @param msgToSend The message
-		 * @param isServerMsg true if the message is a server administrasive msg. False if it's a passed client message.
+		 * @param isServerMsg true if the message is a server administrative msg. False if it's a passed client message.
 		 * 		  Server messages already have "SVR" prepended. Furthermore, server messages are only one line.
 		 */
-		void passMessageFromClientToPeer(String msgToSend, boolean isServerMsg)
+		void sendMessageToThisClientsPeer(String msgToSend, boolean isServerMsg)
 		{
 			// Get the DataOutputStream for the peer
 			DataOutputStream peerDataOutStream = participantToThread.get(client.getPeer()).outToClient;
 			
-			String[] delineatedMsg = getMsgSplitByDelineator(msgToSend);
+			String[] delimitedMsg = getMsgSplitByDelimiter(msgToSend);
 			
 			// In this case, the split message was blank. This means that the
-			// client only wrote in delineators. Just send one empty message.
-			if (delineatedMsg.length == 0)
+			// client only wrote in delimiters. Just send one empty message.
+			if (delimitedMsg.length == 0)
 			{
 				ServerClientCommon.sendMessageToDataOutputStream(client.getName() + ": ", peerDataOutStream, null);	
 			}
-			// If delineatedMeg.legnth == 1, it means that the delineator
+			// If delineatedMeg.legnth == 1, it means that the delimiter
 			// was not in msgToSend. Therefore, don't display "(line x)"
 			// to the client.
-			if (delineatedMsg.length == 1)
+			if (delimitedMsg.length == 1)
 			{
 				// Pass msgToSend to the peer (write to its DataOutputStream)
-				String output = isServerMsg ? client.getName() + ": " + delineatedMsg[0] : delineatedMsg[0];
+				String output = isServerMsg ? delimitedMsg[0] : client.getName() + ": " + delimitedMsg[0];
 				ServerClientCommon.sendMessageToDataOutputStream(output, peerDataOutStream, null);	
 			}
 			else
 			{
-				for (int msgNum = 1; msgNum <= delineatedMsg.length; ++msgNum)
+				for (int msgNum = 1; msgNum <= delimitedMsg.length; ++msgNum)
 				{
 					// Pass msgToSend to the peer (write to its DataOutputStream)
-					ServerClientCommon.sendMessageToDataOutputStream(client.getName() + "(line " + msgNum + "): " + delineatedMsg[msgNum-1], peerDataOutStream, null);	
+					ServerClientCommon.sendMessageToDataOutputStream(client.getName() + "(line " + msgNum + "): " + delimitedMsg[msgNum-1], peerDataOutStream, null);	
 				}
 			}
 		}
@@ -396,13 +396,14 @@ public class ChatServer {
 		/**
 		 * Splits the parameter based on the client's delimiter setting.
 		 * If no delimiter is specified (delimiter == ""), then the message
-		 * is not split.
+		 * is not split. This also allows for escaped characters to serve as a delimeter.
 		 * @param msgToSplit The message to split
 		 * @return An array of strings split on the delimiter
 		 */
-		String[] getMsgSplitByDelineator(String msgToSplit)
+		String[] getMsgSplitByDelimiter(String msgToSplit)
 		{
 			String[] splitString;
+			String delimWithEscapeFixed = client.getDelimiter().replace("\\", "\\\\");
 			if (client.getDelimiter().equals(""))
 			{
 				splitString = new String[1];
@@ -410,7 +411,7 @@ public class ChatServer {
 			}
 			else
 			{
-				splitString = msgToSplit.split(client.getDelimiter());
+				splitString = msgToSplit.split(delimWithEscapeFixed);
 			}
 			return splitString;
 		}
@@ -458,7 +459,7 @@ public class ChatServer {
 			// When the client wants to know its own name
 			else if (controlMsgLine.contains(ServerClientCommon.GET_MY_NAME))
 			{
-				sendMessageToClient("SVR: Your name is: " + client.getName());
+				sendMessageToClient("SVR: Your name is: \"" + client.getName() + "\"");
 			}
 			// When the client wants to know the name of its peer
 			else if (controlMsgLine.contains(ServerClientCommon.GET_MY_PEERS_NAME))
@@ -647,7 +648,7 @@ public class ChatServer {
 				// and inform them that they have been connected
 				newPeer.setPeer(client);
 				newPeer.setIsInListenMode(false);
-				passMessageFromClientToPeer("SVR: You are now connected with \"" + client.getName() + "\"", true);
+				sendMessageToThisClientsPeer("SVR: You are now connected with \"" + client.getName() + "\"", true);
 			}
 			finally
 			{
@@ -665,7 +666,7 @@ public class ChatServer {
 			try
 			{
 				// Alert the client's peer of the termination
-				passMessageFromClientToPeer("SVR: User \"" + client.getName() + "\" has exited the chat. You are now in listen mode.", true);
+				sendMessageToThisClientsPeer("SVR: User \"" + client.getName() + "\" has exited the chat. You are now in listen mode.", true);
 				
 				// Physically break the connection by nulling this client's peer's peer member
 				// Also, put the peer into listening mode
@@ -688,12 +689,17 @@ public class ChatServer {
 		 * This function reserves and sets the new name if it isn't currently held, and then
 		 * un-reserves the client's current name. It then informs the client of the change.
 		 * If the name is already in use, tell the client they can't reserve it.
+		 * Note that if this client is talking to another client, the connection
+		 * will not be broken, but rather the peer will be informed of the change.
+		 * Whitespace only names are not allowed, and whitespace of a name is removed
+		 * from the beginning and end of the string. In otherwords " Ben " = "Ben"
 		 * @param controlMsgLine The raw input message which contains the control strings
 		 */
 		void updateNameControlMsgHandler(String controlMsgLine)
 		{
 			// Parse the control message for the new name. The name is every character following the "=" sign in the control message
-			String newName = controlMsgLine.substring(controlMsgLine.indexOf(ServerClientCommon.SET_USERNAME) + ServerClientCommon.SET_USERNAME.length());
+			// Use .trim() to remove leading or trailing whitespace
+			String newName = controlMsgLine.substring(controlMsgLine.indexOf(ServerClientCommon.SET_USERNAME) + ServerClientCommon.SET_USERNAME.length()).trim();
 			
 			// If the client is trying to set its new name to its current name, inform them.
 			if (newName.equals(client.getName()))
@@ -701,10 +707,16 @@ public class ChatServer {
 				sendMessageToClient("SVR: The username \"" + newName + "\" is your current username.");
 				return;
 			}
-			
+			// If their desired name is reserved
 			if (Arrays.asList(ServerClientCommon.RESERVED_NAMES).contains(newName))
 			{
 				sendMessageToClient("SVR: The username \"" + newName + "\" is reserved. Pick another");
+				return;
+			}
+			// If the desired name is all whitespace, tell the client that it's a no-go
+			if (newName.equals(""))
+			{
+				sendMessageToClient("SVR: Whitespace-only usernames are not permitted. Pick another");
 				return;
 			}
 			
@@ -726,6 +738,13 @@ public class ChatServer {
 					
 					// Tell them that the new name has been set
 					sendMessageToClient("SVR: Your username has been set to \"" + newName + "\"");
+					
+					// If the client is chatting with someone else, let them know of the name change,
+					// but don't disconnect from them
+					if (!client.isInListenMode())
+					{
+						sendMessageToThisClientsPeer("SVR: Your peer has changed their name to: \"" + client.getName() + "\".", true);
+					}
 				}
 				// If the name is current in use by someone else, tell the client they can't change take it.
 				else
@@ -740,7 +759,9 @@ public class ChatServer {
 		}
 		
 		/**
-		 * Send a message to the client directly connected to this socket.
+		 * Send a message to the client directly whom this thread corresponds to. These messages will
+		 * not be delimited, and are mostly from the server only, so we don't have to do all the delimiter
+		 * handling.
 		 * @param msgToSend The message to send
 		 */
 		void sendMessageToClient(String msgToSend)
@@ -756,28 +777,28 @@ public class ChatServer {
 		 */
 		void echoMessageToClient(String msgToSend)
 		{
-			String[] delineatedMsg = getMsgSplitByDelineator(msgToSend);
+			String[] delimitedMsg = getMsgSplitByDelimiter(msgToSend);
 			
 			// In this case, the split message was blank. This means that the
-			// client only wrote in delineators. Just send one empty message.
-			if (delineatedMsg.length == 0)
+			// client only wrote in delimiters. Just send one empty message.
+			if (delimitedMsg.length == 0)
 			{
 				ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO: ", outToClient, null);	
 			}
-			// If delineatedMeg.legnth == 1, it means that the delineator
+			// If delineatedMeg.legnth == 1, it means that the delimiter
 			// was not in msgToSend. Therefore, don't display "(line x)"
 			// to the client.
-			if (delineatedMsg.length == 1)
+			if (delimitedMsg.length == 1)
 			{
 				// Pass msgToSend to the client, prepending a special listening mode header.
-				ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO: " + delineatedMsg[0], outToClient, null);	
+				ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO: " + delimitedMsg[0], outToClient, null);	
 			}
 			else
 			{
-				for (int msgNum = 1; msgNum <= delineatedMsg.length; ++msgNum)
+				for (int msgNum = 1; msgNum <= delimitedMsg.length; ++msgNum)
 				{
 					// Pass msgToSend to the client, prepending a special listening mode header.
-					ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO (line " + msgNum + "): " + delineatedMsg[msgNum-1], outToClient, null);	
+					ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO (line " + msgNum + "): " + delimitedMsg[msgNum-1], outToClient, null);	
 				}
 			}
 		}
