@@ -20,9 +20,7 @@ This document is organized into several sections:
 		input from the console/GUI and sends messages to the server and 2.) a thread which reads data
 		sent from the server to the client. The actual threads are "ConnectionClientThreads" which is
 		a private subclass within ChatClient.java. All of the GUI-client functionality is handled through
-		hooks inside the ChatClient.java class. In the event that the user is typing a message upon receipt
-		of a new message from their peer (signified by the text=enter box being empty), then the received
-		message is buffered until they hit their specified delimiter key.
+		hooks inside the ChatClient.java class.
 	2.) ChatClientGui.java - This file is what you will use as the client. It is a GUI which allows
 		for user input as well as shows messages from the server (and therefore from a chat partner).
 		Thanks Window Builder Pro! The ChatClientGui has a main "message history" window, which shows
@@ -93,10 +91,9 @@ This document is organized into several sections:
 		Their username will be shown to the left of each received message. You can click "Disconnect from Peer"
 		to enter listener mode, or you can click "Disconnect from Server" to disconnect from both the peer
 		and server. Other commands are described below.
-	8.) The delimiter: The default delimiter is the Enter key. Therefore, any message being typed is considered
-		in progress until you hit the delimiter to send it. All messages received during this time will be buffered,
-		and hitting the delimiter will display all messages buffered to that point. The delimiting key can be changed
+	8.) The delimiter: The default delimiter is the Enter key. The delimiting key can be changed
 		by selecting "Set Delimiter" from the command menu, and will be described below in the command section.
+		When the delimiter is pressed, the client's message will be sent to the server.
 		
 3.) Command syntax
 	0.) General: All commands MUST start with the "C0NTR0L:". Any messages that start with "C0NTR0L:" will be interpreted

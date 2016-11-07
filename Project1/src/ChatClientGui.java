@@ -173,21 +173,9 @@ public class ChatClientGui {
 	    		{
 	    			textAreaSetNewDelimiterHandler(arg0);
 	    		}
-	    		// 8 is backspace
-	    		else if (arg0.getKeyChar() == 8)
-	    		{
-	    			if (newMessageArea.getText().length() == 0)
-	    			{
-		    			// Show the buffer contents
-		    			displayBufferContentsToWindow();
-	    			}
-	    		}
 	    		// The delimiter was selected - show your message after the buffered messages.
 	    		else if (arg0.getKeyChar() == keyDelimiterValue)
 	    		{
-	    			// Show the buffer contents
-	    			displayBufferContentsToWindow();
-
 	    			// Send/show the new message
 	    			sendMessageFromTextField();
 
@@ -196,18 +184,6 @@ public class ChatClientGui {
 	    		}		
 	    	}
 	      });
-	}
-	
-	/**
-	 * Show all messages in the buffer into the history window in a FIFO order
-	 */
-	private void displayBufferContentsToWindow()
-	{
-		while (!chatClientThread.getUnshownMessageBuffer().isEmpty())
-		{
-			String currMsg = chatClientThread.getUnshownMessageBuffer().poll();
-			displayTextInHistoryWindow(currMsg);
-		}
 	}
 	
 	/**

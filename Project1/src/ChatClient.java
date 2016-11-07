@@ -13,7 +13,6 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.LinkedList;
 
 public class ChatClient extends Thread{
 	
@@ -53,13 +52,6 @@ public class ChatClient extends Thread{
 	 * The GUI used by this client. Null if in command line interface mode.
 	 */
 	private ChatClientGui assocGui;
-	
-	/**
-	 * New messages from the server/other client are buffered into
-	 * here until they can be shown (when this client finishes their message).
-	 */
-//	private String unshownMessageBuffer = "";
-	private LinkedList<String> unshownMessageBuffer = new LinkedList<>();
 		
 	///////////////////
 	// FUNCTIONS	 //
@@ -226,25 +218,12 @@ public class ChatClient extends Thread{
 	{
 		if (assocGui != null)
 		{
-			// If the user is typing a message, buffer the message just received
-			if (assocGui.isTextEntryFieldBlank())
-			{
-				assocGui.displayTextInHistoryWindow(msg);
-			}
-			else
-			{
-				unshownMessageBuffer.add(msg);
-			}
+			assocGui.displayTextInHistoryWindow(msg);
 		}
 		else
 		{
 			System.out.println(msg);
 		}
-	}
-	
-	LinkedList<String> getUnshownMessageBuffer()
-	{
-		return unshownMessageBuffer;
 	}
 	
 	/**
