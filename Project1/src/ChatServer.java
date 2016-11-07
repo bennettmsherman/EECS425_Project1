@@ -516,9 +516,15 @@ public class ChatServer {
 				// Parse the control message for the new peer's name. The name is every character following the "=" sign in the control message
 				String newPeerName = controlMsgLine.substring(controlMsgLine.indexOf(ServerClientCommon.SET_PEER_NAME) + ServerClientCommon.SET_PEER_NAME.length());
 				
+				// If the client wants to change their peer to their current peer, tell them that they're already connected
+				if (!client.isInListenMode() && newPeerName.equals(client.getPeer().getName()))
+				{
+					sendMessageToClient("SVR: You're already chatting with \"" + newPeerName + "\".");
+					return;
+				}
 				// If the client wants to disconnect from their current partner and become a listener given that they're
 				// currently connected to another client.
-				if (newPeerName.equals(ServerClientCommon.LISTENER_SPECIFIER) && !client.isInListenMode())
+				else if (newPeerName.equals(ServerClientCommon.LISTENER_SPECIFIER) && !client.isInListenMode())
 				{
 					terminateConnectionBetweenThisClientAndItsPeer();
 					sendMessageToClient("SVR: Disconnected with \"" + client.getName() + "\". You are now in listen mode.");
@@ -539,7 +545,7 @@ public class ChatServer {
 				if (!nameToParticipant.containsKey(newPeerName) && !client.isInListenMode())
 				{
 					sendMessageToClient("SVR: The desired client, \"" + newPeerName + "\" is not connected to the server. Try again later." +
-							"You are now being disconnected from: " + client.getPeer().getName());
+							"You are now being disconnected from \"" + client.getPeer().getName() + "\"");
 					terminateConnectionBetweenThisClientAndItsPeer();
 					return;
 				}
@@ -558,21 +564,21 @@ public class ChatServer {
 				// from its current peer.
 				if (!desiredPeer.isInListenMode() && !client.isInListenMode())
 				{
-					sendMessageToClient("SVR: The desired client, \"" + newPeerName + "\" is chatting with the user " +
-											desiredPeer.getPeer().getName() + ". Try again later." +
-											"You are now being disconnected from: " + client.getPeer().getName());
+					sendMessageToClient("SVR: The desired client, \"" + newPeerName + "\" is chatting with the user \"" +
+											desiredPeer.getPeer().getName() + "\". Try again later." +
+											"You are now being disconnected from: \"" + client.getPeer().getName() + "\"");
 					terminateConnectionBetweenThisClientAndItsPeer();
 				}
 				// If the desired peer is connected to someone but the caller is not. The caller will not be able to connect to the desired peer.
 				else if (!desiredPeer.isInListenMode() && client.isInListenMode())
 				{
-					sendMessageToClient("SVR: The desired client, \"" + newPeerName + "\" is chatting with the user " + desiredPeer.getPeer().getName() + ". Try again later.");
+					sendMessageToClient("SVR: The desired client, \"" + newPeerName + "\" is chatting with the user \"" + desiredPeer.getPeer().getName() + "\". Try again later.");
 				}
 				// If the caller is connected to another client, but the desired peer is not, the caller will have to end its chat
 				// with its current client and then connect to the new desired client.
 				else if (desiredPeer.isInListenMode() && !client.isInListenMode())
 				{
-					sendMessageToClient("SVR: You are now being disconnected from: " + client.getPeer().getName());
+					sendMessageToClient("SVR: You are now being disconnected from: \"" + client.getPeer().getName() + "\"");
 					terminateConnectionBetweenThisClientAndItsPeer();
 					connectToOtherClient(desiredPeer);
 				}

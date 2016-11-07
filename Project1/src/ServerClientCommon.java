@@ -79,6 +79,11 @@ abstract class ServerClientCommon {
 	static final String LISTENER_SPECIFIER = "Listener";
 	
 	/**
+	 * Used to exit the application
+	 */
+	static final String EXIT_APP = "EXIT APPLICATION";
+	
+	/**
 	 *  I'm in the 325N section and my roster number is 2 (so 46 + 2)
 	 *  This is the default port number for both the server and client.
 	 */

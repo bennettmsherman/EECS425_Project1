@@ -4,6 +4,7 @@ EECS325 Project 1, Fall 2016
 Hello! First off, I did the extra credit/425 project and therefore utilized a client GUI (which should actually make your testing significantly easier).
 Also note that in the "doc" folder of my submission there are javadocs for each class, each function, and each member variable. This might help you
 sift through the code.
+- I used port 50048 (I'm in 325N, second in the roster). This is defaulted to in the client.
 
 This document is organized into several sections:
 1.) Code Organization
@@ -94,6 +95,7 @@ This document is organized into several sections:
 	8.) The delimiter: The default delimiter is the Enter key. The delimiting key can be changed
 		by selecting "Set Delimiter" from the command menu, and will be described below in the command section.
 		When the delimiter is pressed, the client's message will be sent to the server.
+	9.) To exit the client, select File->Exit. Use Ctrl+C to exit the server. 
 		
 3.) Command syntax
 	0.) General: All commands MUST start with the "C0NTR0L:". Any messages that start with "C0NTR0L:" will be interpreted
@@ -166,9 +168,22 @@ This document is organized into several sections:
 	8.) GUI only - What's my delimiter?
 		- Selecting the "What's my delmimter" option from the command menu will
 		  result in a pop up telling you the keycode for the delimiter.
+	9.) Exit the client
+		- Command: "EXIT APPLICATION"
+		- Ex: "C0NTR0L:EXIT APPLICATION"
+		- This action will close the client and disconnect from the server. It will then exit the GUI.
+		  This command can be entered into the chat message box OR the identical action occurs
+		  if you choose File->Exit
 	
 4.) Assumptions/Other
-	
+	1.) Sometimes new messages look a bit glitch-y. Just scroll up/down and it'll fix itself. I have no idea what's causing that.
+	2.) For the feedback requirements of "the user attempts to send a text message to the correspondent but the correspondent is no longer
+		online or switched to chatting with someone else" and "the user attempts to enter a correspodent's name but the correspondent is not
+		a listener or is not online," my program disconnects two users when one client leaves the chat, so it isn't possible for one user
+		to contact its previous chat participant unless they reconnect. I provide a message saying that the disconnect occurs and who they're
+		currently talking to (or if they're in listen mode). Furthermore, if a user is not a listener and isn't chatting with someone else,
+		they must be offline. There is no explicit "not a listener" feedback message, because if they're not a listener, they're either offline
+		or talking to someone else, so I provide feedback for those two cases instead.
 	
 	
 	

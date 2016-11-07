@@ -161,7 +161,8 @@ public class ChatClientGui {
 	/**
 	 * Each time a new key is pressed or released while the text box is selected,
 	 * this function is executed. It checks to see if the delimiter has ebeen
-	 * pressed or of the user is attempting to set a new delimiter.
+	 * pressed or of the user is attempting to set a new delimiter. This also
+	 * checks to see if the user has entered an exit message
 	 */
 	private void setupKeyListenerForNewMsgArea()
 	{
@@ -176,11 +177,20 @@ public class ChatClientGui {
 	    		// The delimiter was selected - show your message after the buffered messages.
 	    		else if (arg0.getKeyChar() == keyDelimiterValue)
 	    		{
-	    			// Send/show the new message
-	    			sendMessageFromTextField();
+	    			// If the user specified the exit command
+	    			if (newMessageArea.getText().equals(ServerClientCommon.CONTROL_MESSAGE_SPECIFIER + ServerClientCommon.EXIT_APP))
+	    			{
+	    				exitMenuItemAction.actionPerformed(null);
+	    			}
+	    			// If they just want to send a normal message
+	    			else
+	    			{
+		    			// Send/show the new message
+		    			sendMessageFromTextField();
 
-	    			// Wipe out the message area.
-	    			newMessageArea.setText(null);
+		    			// Wipe out the message area.
+		    			newMessageArea.setText(null);
+	    			}
 	    		}		
 	    	}
 	      });
@@ -616,7 +626,15 @@ public class ChatClientGui {
 			{
 				// Set the hostname and port and show them in the message window.
 				serverHostname = hostField.getText();
-				serverPortNum = Integer.parseInt(portNumField.getText());
+				try
+				{
+					serverPortNum = Integer.parseInt(portNumField.getText());
+				}
+				catch (NumberFormatException err)
+				{
+					displayErrorMsg("Error parsing the port number. Specify a valid port in Commands->Connect To Server");
+					return;
+				}
 				if (chatClientThread == null || !chatClientThread.isAlive())
 				{
 					displayTextInHistoryWindow("GUI: Connecting to hostname, port: " + serverHostname + ":" + serverPortNum);
