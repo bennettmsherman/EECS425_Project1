@@ -265,27 +265,7 @@ public class ChatServer {
 			// Has the form <IP>:<Port>
 			String clientIpAndSocket = client.getSocket().getRemoteSocketAddress().toString().substring(1);
 			
-			// Print to the server's console indicating that a new client has connected
-			System.out.println("SVR LOG: New client thread started with IP Address:Port=" + clientIpAndSocket);
-			
-			// Lock table access
-			criticalServerDataLock.lock();
-			try
-			{
-				// Add this client and thread to the participantToThread Hashtable
-				participantToThread.put(client, this);	
-			}
-			finally
-			{
-				criticalServerDataLock.unlock();
-			}
-			
-			// Initialize inFromClient and outToClient
-			initializeStreamAndReader();
-			
-			// Introduce yourself to the client
-			sendMessageToClient("SVR: Welcome from " + serverIpAddr + "/" + serverHostname + ":" + serverPortNumber);
-			sendMessageToClient("SVR: You've been given the default name: " + client.getName());
+			clientConnectionInitialization(clientIpAndSocket);
 			
 			// Loop until the client wants to exit
 			boolean shouldContinue = true;
@@ -324,6 +304,17 @@ public class ChatServer {
 				}
 			}
 			
+			clientDisconnectProcess(clientIpAndSocket);
+		}
+		
+		/**
+		 * Handles run()'s actions post-loop. Specifically, this terminates the connection to the client
+		 * and its peer (if necessary), removes this client's data from the hash tables, closes the socket
+		 * to the client, and logs that the client has left
+		 * @param clientIpAndSocket The IP and Port of the client's socket in the form IP:Socket
+		 */
+		private void clientDisconnectProcess(String clientIpAndSocket)
+		{
 			// If the client was in the middle of chatting when they decided to leave,
 			// let their partner know
 			if (!client.isInListenMode())
@@ -355,6 +346,40 @@ public class ChatServer {
 			System.out.println("SVR LOG: " + clientIpAndSocket + "(" + client.getName() + ") has left");
 		}
 		
+		
+		/**
+		 * When run() is called, this function is called to setup the client
+		 * connection. It logs a a client has been connected, adds this ChatParticipant
+		 * and this thread to the participantToThread HashTable, and initializes 
+		 * inFromClient and outToClient.
+		 * @param clientIpAndSocket The client's IP and port in the form IP:Port
+		 */
+		private void clientConnectionInitialization(String clientIpAndSocket)
+		{		
+			// Print to the server's console indicating that a new client has connected
+			System.out.println("SVR LOG: New client thread started with IP Address:Port=" + clientIpAndSocket);
+			
+			// Lock table access
+			criticalServerDataLock.lock();
+			try
+			{
+				// Add this client and thread to the participantToThread Hashtable
+				participantToThread.put(client, this);	
+			}
+			finally
+			{
+				criticalServerDataLock.unlock();
+			}
+			
+			// Initialize inFromClient and outToClient
+			initializeStreamAndReader();
+			
+			// Introduce yourself to the client
+			sendMessageToClient("SVR: Welcome from " + serverIpAddr + "/" + serverHostname + ":" + serverPortNumber);
+			sendMessageToClient("SVR: You've been given the default name: " + client.getName());
+			
+		}
+		
 		/**
 		 * Forwards a message from this client to its peer
 		 * @param msgToSend The message
@@ -365,55 +390,10 @@ public class ChatServer {
 		{
 			// Get the DataOutputStream for the peer
 			DataOutputStream peerDataOutStream = participantToThread.get(client.getPeer()).outToClient;
-			
-			String[] delimitedMsg = getMsgSplitByDelimiter(msgToSend);
-			
-			// In this case, the split message was blank. This means that the
-			// client only wrote in delimiters. Just send one empty message.
-			if (delimitedMsg.length == 0)
-			{
-				ServerClientCommon.sendMessageToDataOutputStream(client.getName() + ": ", peerDataOutStream, null);	
-			}
-			// If delineatedMeg.legnth == 1, it means that the delimiter
-			// was not in msgToSend. Therefore, don't display "(line x)"
-			// to the client.
-			if (delimitedMsg.length == 1)
-			{
-				// Pass msgToSend to the peer (write to its DataOutputStream)
-				String output = isServerMsg ? delimitedMsg[0] : client.getName() + ": " + delimitedMsg[0];
-				ServerClientCommon.sendMessageToDataOutputStream(output, peerDataOutStream, null);	
-			}
-			else
-			{
-				for (int msgNum = 1; msgNum <= delimitedMsg.length; ++msgNum)
-				{
-					// Pass msgToSend to the peer (write to its DataOutputStream)
-					ServerClientCommon.sendMessageToDataOutputStream(client.getName() + "(line " + msgNum + "): " + delimitedMsg[msgNum-1], peerDataOutStream, null);	
-				}
-			}
-		}
-		
-		/**
-		 * Splits the parameter based on the client's delimiter setting.
-		 * If no delimiter is specified (delimiter == ""), then the message
-		 * is not split. This also allows for escaped characters to serve as a delimeter.
-		 * @param msgToSplit The message to split
-		 * @return An array of strings split on the delimiter
-		 */
-		String[] getMsgSplitByDelimiter(String msgToSplit)
-		{
-			String[] splitString;
-			String delimWithEscapeFixed = client.getDelimiter().replace("\\", "\\\\");
-			if (client.getDelimiter().equals(""))
-			{
-				splitString = new String[1];
-				splitString[0] = msgToSplit;
-			}
-			else
-			{
-				splitString = msgToSplit.split(delimWithEscapeFixed);
-			}
-			return splitString;
+
+			// Pass msgToSend to the peer (write to its DataOutputStream)
+			String output = isServerMsg ? msgToSend : client.getName() + ": " + msgToSend;
+			ServerClientCommon.sendMessageToDataOutputStream(output, peerDataOutStream, null);	
 		}
 		
 		/**
@@ -466,15 +446,6 @@ public class ChatServer {
 			{
 				getMyPeersNameControlMsgHandler();
 			}
-			// Set the delimiter
-			else if (controlMsgLine.contains(ServerClientCommon.SET_DELIMITER))
-			{
-				setDelimiterControlMsgHandler(controlMsgLine);
-			}
-			else if (controlMsgLine.contains(ServerClientCommon.GET_DELIMETER))
-			{
-				sendMessageToClient("SVR: Your delimiter is known to be \"" + client.getDelimiter() + "\"");
-			}
 			// If none of the control messages above match the message that the client
 			// passed (that started with "C0NTR0L:"), tell them that the message was invalid.
 			else
@@ -484,18 +455,6 @@ public class ChatServer {
 			
 			// Return true, indicating that the client and server are to stay connected
 			return true;
-		}
-		
-		/**
-		 * Set the delimiter for this client.
-		 * "" means there is no delimiter
-		 * @param controlMsgLine The new delimiter
-		 */
-		private void setDelimiterControlMsgHandler(String controlMsgLine)
-		{
-			String newDelimiter = controlMsgLine.substring(controlMsgLine.indexOf(ServerClientCommon.SET_DELIMITER) + ServerClientCommon.SET_DELIMITER.length());
-			client.setDelimiter(newDelimiter);
-			sendMessageToClient("SVR: Your delimiter has been set to \"" + client.getDelimiter() + "\"");
 		}
 		
 		/**
@@ -759,9 +718,7 @@ public class ChatServer {
 		}
 		
 		/**
-		 * Send a message to the client directly whom this thread corresponds to. These messages will
-		 * not be delimited, and are mostly from the server only, so we don't have to do all the delimiter
-		 * handling.
+		 * Send a message to the client directly whom this thread corresponds to.
 		 * @param msgToSend The message to send
 		 */
 		void sendMessageToClient(String msgToSend)
@@ -777,30 +734,7 @@ public class ChatServer {
 		 */
 		void echoMessageToClient(String msgToSend)
 		{
-			String[] delimitedMsg = getMsgSplitByDelimiter(msgToSend);
-			
-			// In this case, the split message was blank. This means that the
-			// client only wrote in delimiters. Just send one empty message.
-			if (delimitedMsg.length == 0)
-			{
-				ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO: ", outToClient, null);	
-			}
-			// If delineatedMeg.legnth == 1, it means that the delimiter
-			// was not in msgToSend. Therefore, don't display "(line x)"
-			// to the client.
-			if (delimitedMsg.length == 1)
-			{
-				// Pass msgToSend to the client, prepending a special listening mode header.
-				ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO: " + delimitedMsg[0], outToClient, null);	
-			}
-			else
-			{
-				for (int msgNum = 1; msgNum <= delimitedMsg.length; ++msgNum)
-				{
-					// Pass msgToSend to the client, prepending a special listening mode header.
-					ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO (line " + msgNum + "): " + delimitedMsg[msgNum-1], outToClient, null);	
-				}
-			}
+			ServerClientCommon.sendMessageToDataOutputStream("LISTENER_MODE_ECHO: " + msgToSend, outToClient, null);	
 		}
 	}
 }

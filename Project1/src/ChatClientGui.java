@@ -22,7 +22,6 @@ import javax.swing.Box;
 import javax.swing.DefaultListModel;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JMenu;
@@ -46,7 +45,6 @@ public class ChatClientGui {
 	private JFrame frame;
 	private final Action exitMenuItemAction = new ExitMenuItemAction();
 	private final Action connectToServerMenuItemAction = new ConnectToServerMenuItemAction();
-	private final Action sendButtonPressAction = new SendButtonPressAction();
 	private final Action setUsernameCommandAction = new SetUsernameCommandAction();
 	private final Action getConnectedUsersAction = new GetConnectUsersAction();
 	private final Action connectToNewUserAction = new ConnectToNewUserAction();
@@ -109,6 +107,11 @@ public class ChatClientGui {
 	 */
 	private PrintWriter msgsFromGuiToClientWriter;
 	
+	/**
+	 * The keycode of the key that serves as the delimiter.
+	 */
+	private int keyDelimiterValue = 10;
+	
 	////////////////////
 	// FUNCTIONS	 //
 	///////////////////
@@ -122,6 +125,7 @@ public class ChatClientGui {
 			public void run() {
 				try {
 					ChatClientGui window = new ChatClientGui();
+					window.connectToServerMenuItemAction.actionPerformed(null);
 					window.frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -137,11 +141,112 @@ public class ChatClientGui {
 	 */
 	public ChatClientGui() {
 		initialize();
-		displayTextInHistoryWindow("***To connect, select Commands->Connect to Server and enter the hostname and IP***");
+		displayTextInHistoryWindow("To connect, select Commands->Connect to Server and enter the hostname and IP");
 		displayTextInHistoryWindow("To enter a command, select one from the \"Command\" menu");
-		newMessageArea.setText("Enter your message/commands here or select a command from the Command menu.");
+		displayTextInHistoryWindow("Enter your message/commands in the text field below or select a command from the Command menu.");
 	}
 
+	boolean isTextEntryFieldBlank()
+	{
+		if (newMessageArea.getText().length() == 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	
+	/**
+	 * Each time a new key is pressed or released while the text box is selected,
+	 * this function is executed. It checks to see if the delimiter has ebeen
+	 * pressed or of the user is attempting to set a new delimiter.
+	 */
+	private void setupKeyListenerForNewMsgArea()
+	{
+	    newMessageArea.addKeyListener(new KeyAdapter() { 
+	    	@Override
+	    	public void keyTyped(KeyEvent arg0) {
+	    		// Check if the user wanted to set a new delimiter
+	    		if (newMessageArea.getText().equals(ServerClientCommon.CONTROL_MESSAGE_SPECIFIER + ServerClientCommon.SET_DELIMITER))
+	    		{
+	    			textAreaSetNewDelimiterHandler(arg0);
+	    		}
+	    		// 8 is backspace
+	    		else if (arg0.getKeyChar() == 8)
+	    		{
+	    			if (newMessageArea.getText().length() == 0)
+	    			{
+		    			// Show the buffer contents
+		    			displayBufferContentsToWindow();
+	    			}
+	    		}
+	    		// The delimiter was selected - show your message after the buffered messages.
+	    		else if (arg0.getKeyChar() == keyDelimiterValue)
+	    		{
+	    			// Show the buffer contents
+	    			displayBufferContentsToWindow();
+
+	    			// Send/show the new message
+	    			sendMessageFromTextField();
+
+	    			// Wipe out the message area.
+	    			newMessageArea.setText(null);
+	    		}		
+	    	}
+	      });
+	}
+	
+	/**
+	 * Show all messages in the buffer into the history window in a FIFO order
+	 */
+	private void displayBufferContentsToWindow()
+	{
+		while (!chatClientThread.getUnshownMessageBuffer().isEmpty())
+		{
+			String currMsg = chatClientThread.getUnshownMessageBuffer().poll();
+			displayTextInHistoryWindow(currMsg);
+		}
+	}
+	
+	/**
+	 * Handles setting a new delimiter from the text box field.
+	 * @param arg0 A key event for a keypress within the textbox field.
+	 */
+	private void textAreaSetNewDelimiterHandler(KeyEvent arg0)
+	{
+		int selection = JOptionPane.showConfirmDialog(frame, "You have selected key with character code " + (int) arg0.getKeyChar() + " as your delimeter." +
+				" Do you want to use this as your new delimiter?",
+					"Delimiter Confirmation", JOptionPane.YES_NO_OPTION);
+		if (selection == JOptionPane.YES_OPTION)
+		{
+		keyDelimiterValue = (int) arg0.getKeyChar();
+		}
+		// Wipe out the message area.
+		newMessageArea.setText("");
+	}
+	
+	/**
+	 * Send a message by reading from the input text field.
+	 */
+	private void sendMessageFromTextField()
+	{
+		newMessage = newMessageArea.getText();
+		displayTextInHistoryWindow("You: " + newMessage);
+		newMessageArea.setText("");
+		// Write the message to the stream read by the client application. This is what results
+		// in the message being sent to the server.
+		if (msgsFromGuiToClientWriter != null && chatClientThread != null && chatClientThread.isAlive())
+		{
+			msgsFromGuiToClientWriter.println(newMessage);	
+		}
+		else if (chatClientThread == null || !chatClientThread.isAlive())
+		{
+			displayTextInHistoryWindow("GUI: You're not connected to a server!");
+		}
+	}
+	
 	/**
 	 * Initialize the contents of the frame. This is all generated by Window Builder Pro.
 	 */
@@ -151,21 +256,11 @@ public class ChatClientGui {
 		frame.getContentPane().setBackground(Color.WHITE);
 		
 		newMessageArea = new JTextField();
-	    newMessageArea.addKeyListener(new KeyAdapter() { 
-	        @Override 
-	        public void keyPressed(KeyEvent e) { 
-	          if (e.getKeyCode() == KeyEvent.VK_ENTER) 
-	          { 
-	            sendButtonPressAction.actionPerformed(null); 
-	          } 
-	        } 
-	      });
+	    
+		setupKeyListenerForNewMsgArea();
+		
 		newMessageArea.setToolTipText("Message to be sent");
 		newMessageArea.setColumns(10);
-		
-		JButton sendButton = new JButton("Send");
-		sendButton.setAction(sendButtonPressAction);
-		sendButton.setToolTipText("Press to send message");
 		
 		JScrollPane scrollPane = new JScrollPane();
 		scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
@@ -173,21 +268,15 @@ public class ChatClientGui {
 		GroupLayout groupLayout = new GroupLayout(frame.getContentPane());
 		groupLayout.setHorizontalGroup(
 			groupLayout.createParallelGroup(Alignment.LEADING)
-				.addGroup(groupLayout.createSequentialGroup()
-					.addComponent(newMessageArea)
-					.addPreferredGap(ComponentPlacement.RELATED)
-					.addComponent(sendButton)
-					.addContainerGap())
-				.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 434, Short.MAX_VALUE)
+				.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 624, Short.MAX_VALUE)
+				.addComponent(newMessageArea, GroupLayout.DEFAULT_SIZE, 624, Short.MAX_VALUE)
 		);
 		groupLayout.setVerticalGroup(
 			groupLayout.createParallelGroup(Alignment.TRAILING)
 				.addGroup(groupLayout.createSequentialGroup()
-					.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 211, Short.MAX_VALUE)
+					.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE)
 					.addPreferredGap(ComponentPlacement.RELATED)
-					.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-						.addComponent(newMessageArea, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-						.addComponent(sendButton)))
+					.addComponent(newMessageArea, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
 		);
 		messageHistoryJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		messageHistoryJList.setSelectedIndices(new int[] {-1});
@@ -244,13 +333,13 @@ public class ChatClientGui {
 		mntmWhatsMyName.setAction(getMyUsernameAction);
 		mnCommands.add(mntmWhatsMyName);
 		
-		JMenuItem mntmSetDelimiter = new JMenuItem("Set Delimiter");
-		mntmSetDelimiter.setAction(setDelimeterAction);
-		mnCommands.add(mntmSetDelimiter);
-		
 		JMenuItem mntmGetDelimiter = new JMenuItem("Get Delimiter");
 		mntmGetDelimiter.setAction(getDelimiterAction);
 		mnCommands.add(mntmGetDelimiter);
+		
+		JMenuItem mntmSetDelimiter = new JMenuItem("Set Delimiter");
+		mnCommands.add(mntmSetDelimiter);
+		mntmSetDelimiter.setAction(setDelimeterAction);
 		
 		JMenuItem mntmGenericControlMessage = new JMenuItem("Generic Control Message");
 		mntmGenericControlMessage.setAction(genericControlMessageAction);
@@ -321,10 +410,10 @@ public class ChatClientGui {
 	void displayTextInHistoryWindow(String msg)
 	{
 		// Blank messages don't get added properly, so add a space in the case of a blank msg.
-		if (msg.equals(""))
-		{
-			msg = " ";
-		}
+//		if (msg.equals(""))
+//		{
+//			msg = " ";
+//		}
 		messageHistoryListModel.addElement(msg);
 		
 		// Used to scroll the window downwards to show the new message.
@@ -367,31 +456,6 @@ public class ChatClientGui {
 	////////////////////////////
 	// GUI ACTION HANDLERS	 //
 	///////////////////////////
-	/**
-	 * Handles action events for when the "Send" button is pressed
-	 */
-	private class SendButtonPressAction extends AbstractAction {
-		public SendButtonPressAction() {
-			putValue(NAME, "Send");
-			putValue(SHORT_DESCRIPTION, "Send the message");
-		}
-		public void actionPerformed(ActionEvent e) {
-			newMessage = newMessageArea.getText();
-			displayTextInHistoryWindow("You: " + newMessage);
-			newMessageArea.setText("");
-			// Write the message to the stream read by the client application. This is what results
-			// in the message being sent to the server.
-			if (msgsFromGuiToClientWriter != null && chatClientThread != null && chatClientThread.isAlive())
-			{
-				msgsFromGuiToClientWriter.println(newMessage);	
-			}
-			else if (chatClientThread == null || !chatClientThread.isAlive())
-			{
-				displayTextInHistoryWindow("GUI: You're not connected to a server!");
-			}
-		}
-	}
-	
 	/**
 	 * Handles action events for when the "Set Username" command
 	 * is selected from the command menu.
@@ -494,7 +558,7 @@ public class ChatClientGui {
 	}
 	
 	/**
-	 * Handles action events for when the "Set Delimeter" command
+	 * Handles action events for when the "Set Delimiter" command
 	 * is selected from the command menu.
 	 */
 	private class SetDemiliterAction extends AbstractAction {
@@ -503,10 +567,15 @@ public class ChatClientGui {
 			putValue(SHORT_DESCRIPTION, "Set the message delimiter");
 		}
 		public void actionPerformed(ActionEvent e) {
-			String delimiter = JOptionPane.showInputDialog(null, "Enter the delimiting character sequence. "+
-															"The default is no delimiter. When a delimiter is set, " +
-															" a delimiter in the message it indicates a newline.", "");
-			newMessageArea.setText(ServerClientCommon.CONTROL_MESSAGE_SPECIFIER + ServerClientCommon.SET_DELIMITER + delimiter);
+			String delimeterMsg = "If OK is clicked, the delimeter set command will be entered into the new message window. To set the delimiter,"
+									+ " click on the new message box and select the key you want. A message will confirm your selection.";
+						
+			int selection = JOptionPane.showConfirmDialog(frame, delimeterMsg, "Do you want to set the delimiter?", JOptionPane.YES_NO_OPTION);
+			
+			if (selection == JOptionPane.YES_OPTION)
+			{
+				newMessageArea.setText(ServerClientCommon.CONTROL_MESSAGE_SPECIFIER + ServerClientCommon.SET_DELIMITER);		
+			}
 		}
 	}
 	
@@ -574,16 +643,16 @@ public class ChatClientGui {
 				serverPortNum = Integer.parseInt(portNumField.getText());
 				if (chatClientThread == null || !chatClientThread.isAlive())
 				{
-					displayTextInHistoryWindow("Connecting to hostname, port: " + serverHostname + ":" + serverPortNum);
+					displayTextInHistoryWindow("GUI: Connecting to hostname, port: " + serverHostname + ":" + serverPortNum);
 				}
+				// Create the new ChatClient thread
+				createClient();
 			}
-			// Create the new ChatClient thread
-			createClient();
 		}
 	}
 	
 	/**
-	 * Handles action events for when the "Get Delimeter" command
+	 * Handles action events for when the "Get Delimiter" command
 	 * is selected from the command menu.
 	 */
 	private class GetDelimiterAction extends AbstractAction {
@@ -592,7 +661,7 @@ public class ChatClientGui {
 			putValue(SHORT_DESCRIPTION, "Query the server for the delimiter associated with this client");
 		}
 		public void actionPerformed(ActionEvent e) {
-			newMessageArea.setText(ServerClientCommon.CONTROL_MESSAGE_SPECIFIER + ServerClientCommon.GET_DELIMETER);
+			JOptionPane.showMessageDialog(frame, "Your delimeter has the character code " + keyDelimiterValue, "Delimiter Value", JOptionPane.OK_OPTION);
 		}
 	}
 }

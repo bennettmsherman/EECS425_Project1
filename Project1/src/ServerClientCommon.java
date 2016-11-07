@@ -49,11 +49,6 @@ abstract class ServerClientCommon {
 	static final String SET_DELIMITER = "SET DELIMETER=";
 	
 	/**
-	 * Have the server inform the client of its delimiter
-	 */
-	static final String GET_DELIMETER = "GET DELIMETER";
-	
-	/**
 	 * This disconnects the client from
 	 * the server. The peer (if one exists at the time of calling) will be notified
 	 * of the disconnection.

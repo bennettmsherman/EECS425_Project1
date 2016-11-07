@@ -13,6 +13,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.LinkedList;
 
 public class ChatClient extends Thread{
 	
@@ -52,6 +53,13 @@ public class ChatClient extends Thread{
 	 * The GUI used by this client. Null if in command line interface mode.
 	 */
 	private ChatClientGui assocGui;
+	
+	/**
+	 * New messages from the server/other client are buffered into
+	 * here until they can be shown (when this client finishes their message).
+	 */
+//	private String unshownMessageBuffer = "";
+	private LinkedList<String> unshownMessageBuffer = new LinkedList<>();
 		
 	///////////////////
 	// FUNCTIONS	 //
@@ -209,20 +217,34 @@ public class ChatClient extends Thread{
 	}
 	
 	/**
-	 * If the user is using the GUI, post messages to the message history window.
-	 * Otherwise, write to the console's stdout.
+	 * If the user is using the GUI, post messages to the message history window if they aren't
+	 * actively typinga message. If they are typing, buffer the new message.
+	 * Otherwise, write to the console's stdout
 	 * @param msg The message to display
 	 */
 	private void displayMessage(String msg)
 	{
 		if (assocGui != null)
 		{
-			assocGui.displayTextInHistoryWindow(msg);
+			// If the user is typing a message, buffer the message just received
+			if (assocGui.isTextEntryFieldBlank())
+			{
+				assocGui.displayTextInHistoryWindow(msg);
+			}
+			else
+			{
+				unshownMessageBuffer.add(msg);
+			}
 		}
 		else
 		{
 			System.out.println(msg);
 		}
+	}
+	
+	LinkedList<String> getUnshownMessageBuffer()
+	{
+		return unshownMessageBuffer;
 	}
 	
 	/**
@@ -349,7 +371,7 @@ public class ChatClient extends Thread{
 				// A null message indicates that the connection was broken
 				if (newMsgFromSocket == null)
 				{
-					displayMessage("The connection to the server has broken. Chat ended");
+					displayMessage("\nThe connection to the server has broken. Chat ended");
 					shouldContinue = false;
 					// If the server breaks the connection to the client without the client having requested it,
 					// the user input thread is unaware of the fact that the connection has dropped.
@@ -360,6 +382,8 @@ public class ChatClient extends Thread{
 					}
 					continue;
 				}
+				// Try to display the message, update the buffer if it can't
+				// yet be shown.
 				displayMessage(newMsgFromSocket);
 			}
 		}

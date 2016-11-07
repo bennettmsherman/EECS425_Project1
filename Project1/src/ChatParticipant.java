@@ -31,13 +31,6 @@ public class ChatParticipant {
 	 */
 	private boolean isInListenMode = true;
 	
-	
-	/**
-	 * The delimiter for this client. The delimiter
-	 * breaks messages into multiple lines.
-	 */
-	private String delimiter = "";
-	
 	/////////////////////
 	// CLASS FUNCTIONS //
 	/////////////////////
@@ -104,28 +97,5 @@ public class ChatParticipant {
 	void setIsInListenMode(boolean newListenState)
 	{
 		isInListenMode = newListenState;
-	}
-
-	/**
-	 * @return This client's delimiting string
-	 */
-	public String getDelimiter()
-	{
-		return delimiter;
-	}
-
-	/**
-	 * @param delimiter The delimiting string to set for this client
-	 */
-	public void setDelimiter(String delimiter)
-	{
-		if (delimiter == null)
-		{
-			delimiter = "";
-		}
-		else
-		{
-			this.delimiter = delimiter;
-		}
 	}
 }
